@@ -2,9 +2,11 @@
 
 This repository contains a single interactive learning page for Git branching and merging concepts.
 
+Live site: https://shreyaaaaaak.github.io/git_learn/
+
 ## Contents
 
-- `git_learn.html` — a self-contained HTML tutorial covering:
+- `index.html` - a self-contained HTML tutorial covering:
   - why branches exist
   - branch workflow concepts
   - merge scenarios
@@ -12,9 +14,10 @@ This repository contains a single interactive learning page for Git branching an
 
 ## How to Use
 
-1. Open `git_learn.html` in your browser.
-2. Read through the sections to learn Git branching and merging.
-3. Use the on-page examples and quiz interactions to test your understanding.
+1. Visit https://shreyaaaaaak.github.io/git_learn/ in your browser.
+2. Or open `index.html` locally in your browser.
+3. Read through the sections to learn Git branching and merging.
+4. Use the on-page examples and quiz interactions to test your understanding.
 
 ## Website:-
 https://shreyaaaaaak.github.io/git_learn/
