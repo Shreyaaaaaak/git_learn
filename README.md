@@ -19,8 +19,6 @@ Live site: https://shreyaaaaaak.github.io/git_learn/
 3. Read through the sections to learn Git branching and merging.
 4. Use the on-page examples and quiz interactions to test your understanding.
 
-## Website:-
-https://shreyaaaaaak.github.io/git_learn/
 
 ## Notes
 
