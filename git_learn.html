@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Git Level 1 — Branching & Merging</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --ink:#1a1008;
+  --paper:#f5f0e8;
+  --paper2:#ede7d9;
+  --paper3:#e2d9c8;
+  --branch-main:#c0392b;
+  --branch-dev:#2980b9;
+  --branch-feat:#27ae60;
+  --branch-hot:#8e44ad;
+  --gold:#d4a017;
+  --muted:#8a7a65;
+  --border:#c8b99a;
+  --code-bg:#2c1810;
+  --code-text:#f5c842;
+  --success:#27ae60;
+  --danger:#c0392b;
+  --radius:4px;
+}
+
+html{scroll-behavior:smooth;}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* Noise texture overlay */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:0;
+  opacity:.4;
+}
+
+.app{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:40px 20px 80px;}
+
+/* ---- HEADER ---- */
+header{
+  border-bottom:3px solid var(--ink);
+  padding-bottom:20px;
+  margin-bottom:40px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+}
+
+.title-block{}
+.eyebrow{
+  font-family:'Space Mono',monospace;
+  font-size:.65rem;
+  letter-spacing:3px;
+  color:var(--muted);
+  text-transform:uppercase;
+  margin-bottom:4px;
+}
+
+h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(2.8rem,8vw,5rem);
+  line-height:.95;
+  letter-spacing:1px;
+  color:var(--ink);
+}
+
+h1 span{color:var(--branch-main);}
+
+.progress-strip{
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+
+.prog-dot{
+  width:10px;height:10px;
+  border-radius:50%;
+  background:var(--border);
+  transition:background .3s;
+}
+.prog-dot.done{background:var(--branch-main);}
+.prog-dot.active{background:var(--gold);box-shadow:0 0 0 3px rgba(212,160,23,.3);}
+
+/* ---- SECTION ---- */
+.section{
+  margin-bottom:36px;
+  border:2px solid var(--ink);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+
+.section-header{
+  background:var(--ink);
+  color:var(--paper);
+  padding:12px 20px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+  user-select:none;
+}
+
+.section-num{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:1.6rem;
+  color:var(--gold);
+  line-height:1;
+}
+
+.section-title{
+  font-family:'Space Mono',monospace;
+  font-size:.85rem;
+  letter-spacing:1px;
+}
+
+.section-body{padding:24px;}
+.section-body.collapsed{display:none;}
+
+/* ---- CONCEPT CARD ---- */
+.concept{
+  background:var(--paper2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px 20px;
+  margin-bottom:16px;
+  position:relative;
+  overflow:hidden;
+}
+
+.concept::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:4px;
+  background:var(--gold);
+}
+
+.concept-title{
+  font-family:'Space Mono',monospace;
+  font-size:.75rem;
+  letter-spacing:1px;
+  color:var(--muted);
+  margin-bottom:8px;
+  text-transform:uppercase;
+}
+
+.concept p{font-size:.92rem;line-height:1.65;color:#3a2e1e;}
+
+/* ---- CODE BLOCK ---- */
+.code-block{
+  background:var(--code-bg);
+  border-radius:var(--radius);
+  padding:16px 20px;
+  margin:14px 0;
+  font-family:'Space Mono',monospace;
+  font-size:.82rem;
+  line-height:1.8;
+  overflow-x:auto;
+  position:relative;
+}
+
+.code-block .prompt{color:#666;user-select:none;}
+.code-block .cmd{color:var(--code-text);}
+.code-block .comment{color:#5a7a5a;font-style:italic;}
+.code-block .out{color:#aaa;}
+
+.copy-btn{
+  position:absolute;
+  top:10px;right:10px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
+  color:#aaa;
+  font-family:'Space Mono',monospace;
+  font-size:.6rem;
+  padding:4px 10px;
+  border-radius:3px;
+  cursor:pointer;
+  transition:all .2s;
+  letter-spacing:.5px;
+}
+.copy-btn:hover{background:rgba(255,255,255,.15);color:#fff;}
+.copy-btn.copied{color:var(--success);border-color:var(--success);}
+
+/* ---- COMMAND TABLE ---- */
+.cmd-table{width:100%;border-collapse:collapse;margin:14px 0;}
+.cmd-table th{
+  font-family:'Space Mono',monospace;
+  font-size:.65rem;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  color:var(--muted);
+  padding:8px 12px;
+  text-align:left;
+  border-bottom:2px solid var(--border);
+}
+.cmd-table td{
+  padding:10px 12px;
+  border-bottom:1px solid var(--paper3);
+  vertical-align:top;
+}
+.cmd-table tr:last-child td{border-bottom:none;}
+.cmd-table tr:hover td{background:var(--paper3);}
+.cmd-mono{
+  font-family:'Space Mono',monospace;
+  font-size:.78rem;
+  background:var(--code-bg);
+  color:var(--code-text);
+  padding:3px 8px;
+  border-radius:3px;
+  white-space:nowrap;
+}
+.cmd-desc{font-size:.85rem;color:#3a2e1e;line-height:1.5;}
+
+/* ---- VISUAL BRANCH DIAGRAM ---- */
+#branch-canvas{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:var(--code-bg);
+  display:block;
+}
+
+/* ---- INTERACTIVE SIMULATOR ---- */
+.simulator{
+  background:var(--code-bg);
+  border-radius:var(--radius);
+  padding:0;
+  overflow:hidden;
+}
+
+.sim-toolbar{
+  background:#1a0e08;
+  padding:10px 16px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  border-bottom:1px solid #3a2010;
+}
+
+.sim-dot{width:10px;height:10px;border-radius:50%;}
+
+.sim-title{
+  font-family:'Space Mono',monospace;
+  font-size:.65rem;
+  color:#666;
+  margin-left:6px;
+  letter-spacing:1px;
+}
+
+.sim-output{
+  padding:16px;
+  font-family:'Space Mono',monospace;
+  font-size:.8rem;
+  line-height:1.9;
+  min-height:180px;
+  max-height:260px;
+  overflow-y:auto;
+}
+
+.sim-line{margin:0;padding:0;}
+.sim-line.info{color:#aaa;}
+.sim-line.success{color:var(--success);}
+.sim-line.error{color:#e74c3c;}
+.sim-line.branch-main{color:#e74c3c;}
+.sim-line.branch-dev{color:#3498db;}
+.sim-line.branch-feat{color:#2ecc71;}
+.sim-line.prompt-line{color:var(--code-text);}
+.sim-line.output{color:#888;}
+
+.sim-input-row{
+  display:flex;
+  align-items:center;
+  padding:10px 16px;
+  border-top:1px solid #3a2010;
+  gap:8px;
+}
+
+.sim-prompt-label{
+  font-family:'Space Mono',monospace;
+  font-size:.8rem;
+  color:var(--code-text);
+  white-space:nowrap;
+  min-width:120px;
+}
+
+.sim-input{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  font-family:'Space Mono',monospace;
+  font-size:.8rem;
+  color:#fff;
+  caret-color:var(--gold);
+}
+
+.sim-enter{
+  background:var(--gold);
+  color:var(--ink);
+  border:none;
+  font-family:'Space Mono',monospace;
+  font-size:.65rem;
+  font-weight:700;
+  padding:6px 12px;
+  border-radius:3px;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:opacity .15s;
+}
+.sim-enter:hover{opacity:.85;}
+
+/* ---- QUIZ ---- */
+.quiz-card{
+  background:var(--paper2);
+  border:2px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:14px;
+}
+
+.quiz-q{
+  font-family:'Space Mono',monospace;
+  font-size:.82rem;
+  line-height:1.6;
+  margin-bottom:14px;
+  color:var(--ink);
+}
+
+.quiz-options{display:flex;flex-direction:column;gap:8px;}
+
+.quiz-opt{
+  background:var(--paper3);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  padding:10px 14px;
+  font-family:'Space Mono',monospace;
+  font-size:.75rem;
+  cursor:pointer;
+  transition:all .18s;
+  text-align:left;
+  color:var(--ink);
+  line-height:1.5;
+}
+.quiz-opt:hover{border-color:var(--ink);background:var(--paper);}
+.quiz-opt.correct{background:#d5f0db;border-color:var(--success);color:#1a5c2a;}
+.quiz-opt.wrong{background:#fde8e8;border-color:var(--danger);color:#7a1a1a;}
+.quiz-opt:disabled{cursor:default;}
+
+.quiz-feedback{
+  font-family:'Space Mono',monospace;
+  font-size:.72rem;
+  margin-top:10px;
+  padding:8px 12px;
+  border-radius:3px;
+  display:none;
+  line-height:1.6;
+}
+.quiz-feedback.show{display:block;}
+.quiz-feedback.ok{background:#d5f0db;color:#1a5c2a;}
+.quiz-feedback.bad{background:#fde8e8;color:#7a1a1a;}
+
+/* ---- CHALLENGE ---- */
+.challenge{
+  background:var(--ink);
+  color:var(--paper);
+  border-radius:var(--radius);
+  padding:24px;
+  margin-top:8px;
+}
+.challenge-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:1.6rem;
+  color:var(--gold);
+  margin-bottom:8px;
+  letter-spacing:1px;
+}
+.challenge ol{
+  padding-left:20px;
+  font-family:'Space Mono',monospace;
+  font-size:.75rem;
+  line-height:2.2;
+  color:#ccc;
+}
+.challenge li span{color:var(--code-text);}
+
+/* ---- BADGE ---- */
+.badge-wrap{text-align:center;padding:32px 20px;}
+.badge{
+  display:inline-block;
+  background:var(--ink);
+  color:var(--gold);
+  font-family:'Bebas Neue',sans-serif;
+  font-size:2rem;
+  letter-spacing:2px;
+  padding:16px 36px;
+  border:3px solid var(--gold);
+  border-radius:var(--radius);
+  box-shadow:6px 6px 0 var(--gold);
+  transform:rotate(-1deg);
+}
+
+/* ---- MISC ---- */
+.tag{
+  display:inline-block;
+  font-family:'Space Mono',monospace;
+  font-size:.6rem;
+  letter-spacing:1px;
+  padding:2px 8px;
+  border-radius:20px;
+  border:1px solid;
+  margin-left:8px;
+  vertical-align:middle;
+}
+.tag-new{color:var(--branch-feat);border-color:var(--branch-feat);}
+.tag-tip{color:var(--gold);border-color:var(--gold);}
+
+.divider{height:1px;background:var(--border);margin:20px 0;}
+
+.tip-box{
+  background:#fffbe6;
+  border:1px solid #e6cc6a;
+  border-left:4px solid var(--gold);
+  border-radius:var(--radius);
+  padding:12px 16px;
+  margin:12px 0;
+  font-size:.85rem;
+  line-height:1.6;
+  color:#5a4a10;
+}
+.tip-box strong{font-family:'Space Mono',monospace;font-size:.75rem;}
+
+.flex-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0;}
+
+.score-display{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:1.4rem;
+  color:var(--branch-main);
+  letter-spacing:1px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">Git Bootcamp · Level 1</div>
+      <h1>Branch<span>&</span><br>Merge</h1>
+    </div>
+    <div>
+      <div class="eyebrow" style="text-align:right;margin-bottom:8px;">Your Progress</div>
+      <div class="progress-strip" id="progress-strip">
+        <div class="prog-dot active"></div>
+        <div class="prog-dot"></div>
+        <div class="prog-dot"></div>
+        <div class="prog-dot"></div>
+        <div class="prog-dot"></div>
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);margin-top:6px;text-align:right;">
+        Score: <span class="score-display" id="score-display">0</span> / 5
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ SECTION 1: WHY BRANCHES ============ -->
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('s1')">
+      <div class="section-num">01</div>
+      <div class="section-title">WHY DO BRANCHES EXIST?</div>
+    </div>
+    <div class="section-body" id="s1">
+      <div class="concept">
+        <div class="concept-title">The Problem</div>
+        <p>Imagine you're building a feature but your code breaks halfway through. If everything is on <code>main</code>, your broken code is now live. Branches let you work in a <strong>safe sandbox</strong> — completely isolated from the rest of the project until you're ready.</p>
+      </div>
+      <div class="concept">
+        <div class="concept-title">Think of it like this</div>
+        <p>Your project is a book. <strong>main</strong> is the published version. A branch is like a personal notepad where you draft a new chapter. Once the chapter is good, you copy it into the book (merge). If you hate it, just throw the notepad away — the book is untouched.</p>
+      </div>
+
+      <canvas id="branch-canvas" height="180"></canvas>
+
+      <div class="tip-box">
+        <strong>💡 CONVENTION:</strong> Most teams use <code>main</code> (or <code>master</code>) as the stable production branch. New work always happens on feature branches, never directly on main.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 2: COMMANDS ============ -->
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('s2')">
+      <div class="section-num">02</div>
+      <div class="section-title">THE 6 COMMANDS YOU NEED</div>
+    </div>
+    <div class="section-body collapsed" id="s2">
+      <table class="cmd-table">
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="cmd-mono">git branch</span></td>
+            <td class="cmd-desc">List all branches. The one with <code>*</code> is your current branch.</td>
+          </tr>
+          <tr>
+            <td><span class="cmd-mono">git branch &lt;name&gt;</span></td>
+            <td class="cmd-desc">Create a new branch. Doesn't switch to it yet.</td>
+          </tr>
+          <tr>
+            <td><span class="cmd-mono">git checkout &lt;name&gt;</span></td>
+            <td class="cmd-desc">Switch to an existing branch.</td>
+          </tr>
+          <tr>
+            <td><span class="cmd-mono">git checkout -b &lt;name&gt;</span> <span class="tag tag-tip">shortcut</span></td>
+            <td class="cmd-desc">Create AND switch in one command. You'll use this 90% of the time.</td>
+          </tr>
+          <tr>
+            <td><span class="cmd-mono">git merge &lt;name&gt;</span></td>
+            <td class="cmd-desc">Merge the named branch INTO your current branch. Always switch to the target branch first.</td>
+          </tr>
+          <tr>
+            <td><span class="cmd-mono">git branch -d &lt;name&gt;</span></td>
+            <td class="cmd-desc">Delete a branch after merging. Use <code>-D</code> to force delete.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="divider"></div>
+
+      <p style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);letter-spacing:1px;margin-bottom:12px;">REAL WORKFLOW EXAMPLE</p>
+
+      <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <div><span class="prompt">$ </span><span class="cmd">git checkout -b feature/dark-mode</span></div>
+        <div><span class="out">Switched to a new branch 'feature/dark-mode'</span></div>
+        <div>&nbsp;</div>
+        <div><span class="comment"># ... make your changes, then commit ...</span></div>
+        <div><span class="prompt">$ </span><span class="cmd">git add .</span></div>
+        <div><span class="prompt">$ </span><span class="cmd">git commit -m "feat: add dark mode toggle"</span></div>
+        <div>&nbsp;</div>
+        <div><span class="comment"># Switch back to main and merge</span></div>
+        <div><span class="prompt">$ </span><span class="cmd">git checkout main</span></div>
+        <div><span class="prompt">$ </span><span class="cmd">git merge feature/dark-mode</span></div>
+        <div><span class="out">Updating 3f2a1b..9c4d2e</span></div>
+        <div><span class="out">Fast-forward</span></div>
+        <div>&nbsp;</div>
+        <div><span class="comment"># Clean up the branch</span></div>
+        <div><span class="prompt">$ </span><span class="cmd">git branch -d feature/dark-mode</span></div>
+        <div><span class="out">Deleted branch feature/dark-mode (was 9c4d2e)</span></div>
+      </div>
+
+      <div class="tip-box">
+        <strong>⚠️ MERGE RULE:</strong> You merge INTO the branch you're currently on. To bring feature into main, first <code>checkout main</code>, then <code>merge feature</code>.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 3: SIMULATOR ============ -->
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('s3')">
+      <div class="section-num">03</div>
+      <div class="section-title">INTERACTIVE TERMINAL <span class="tag tag-new">LIVE</span></div>
+    </div>
+    <div class="section-body collapsed" id="s3">
+      <p style="font-size:.88rem;line-height:1.6;margin-bottom:16px;color:#3a2e1e;">
+        Try the commands yourself! This simulator mimics a real Git repo. Type commands below and see what happens.
+      </p>
+
+      <div class="simulator">
+        <div class="sim-toolbar">
+          <div class="sim-dot" style="background:#e74c3c"></div>
+          <div class="sim-dot" style="background:#f39c12"></div>
+          <div class="sim-dot" style="background:#2ecc71"></div>
+          <span class="sim-title">git-simulator — statlab/</span>
+        </div>
+        <div class="sim-output" id="sim-output">
+          <p class="sim-line info">Git simulator initialized. You have a repo with 2 commits on main.</p>
+          <p class="sim-line info">Try: git branch, git checkout -b dev, git merge dev</p>
+          <p class="sim-line info">─────────────────────────────────────────────</p>
+        </div>
+        <div class="sim-input-row">
+          <div class="sim-prompt-label" id="sim-prompt">main $</div>
+          <input class="sim-input" id="sim-input" type="text" placeholder="type a git command..." autocomplete="off" autocorrect="off" spellcheck="false"/>
+          <button class="sim-enter" onclick="runCmd()">RUN ↵</button>
+        </div>
+      </div>
+
+      <div class="flex-row" style="margin-top:12px;">
+        <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);">QUICK COMMANDS:</span>
+        <button class="copy-btn" style="position:static;font-size:.65rem;" onclick="fillCmd('git branch')">git branch</button>
+        <button class="copy-btn" style="position:static;font-size:.65rem;" onclick="fillCmd('git checkout -b feature/test')">checkout -b</button>
+        <button class="copy-btn" style="position:static;font-size:.65rem;" onclick="fillCmd('git merge feature/test')">git merge</button>
+        <button class="copy-btn" style="position:static;font-size:.65rem;" onclick="fillCmd('git branch -d feature/test')">branch -d</button>
+        <button class="copy-btn" style="position:static;font-size:.65rem;" onclick="resetSim()">RESET</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SECTION 4: QUIZ ============ -->
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('s4')">
+      <div class="section-num">04</div>
+      <div class="section-title">KNOWLEDGE CHECK — 5 QUESTIONS</div>
+    </div>
+    <div class="section-body collapsed" id="s4">
+
+      <div class="quiz-card" id="q1">
+        <div class="quiz-q">Q1. You want to create a new branch called <code>feature/login</code> AND immediately switch to it. Which command do you use?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,'q1','wrong')">git branch feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q1','correct')">git checkout -b feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q1','wrong')">git switch feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q1','wrong')">git create -b feature/login</button>
+        </div>
+        <div class="quiz-feedback" id="fb-q1"></div>
+      </div>
+
+      <div class="quiz-card" id="q2">
+        <div class="quiz-q">Q2. You're on branch <code>feature/login</code> and you want to merge your work into <code>main</code>. What's the correct order of commands?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,'q2','wrong')">git merge main → git checkout main</button>
+          <button class="quiz-opt" onclick="answer(this,'q2','correct')">git checkout main → git merge feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q2','wrong')">git merge feature/login (from anywhere)</button>
+          <button class="quiz-opt" onclick="answer(this,'q2','wrong')">git checkout feature/login → git merge main</button>
+        </div>
+        <div class="quiz-feedback" id="fb-q2"></div>
+      </div>
+
+      <div class="quiz-card" id="q3">
+        <div class="quiz-q">Q3. After merging <code>feature/login</code> into main, you want to delete the feature branch. Which command is safe to use?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,'q3','wrong')">git branch --remove feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q3','wrong')">git delete feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q3','correct')">git branch -d feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q3','wrong')">git checkout -d feature/login</button>
+        </div>
+        <div class="quiz-feedback" id="fb-q3"></div>
+      </div>
+
+      <div class="quiz-card" id="q4">
+        <div class="quiz-q">Q4. You run <code>git branch</code> and see:<br><br><code>* main<br>&nbsp;&nbsp;dev<br>&nbsp;&nbsp;feature/login</code><br><br>Which branch are you currently on?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,'q4','wrong')">dev</button>
+          <button class="quiz-opt" onclick="answer(this,'q4','correct')">main</button>
+          <button class="quiz-opt" onclick="answer(this,'q4','wrong')">feature/login</button>
+          <button class="quiz-opt" onclick="answer(this,'q4','wrong')">All of them</button>
+        </div>
+        <div class="quiz-feedback" id="fb-q4"></div>
+      </div>
+
+      <div class="quiz-card" id="q5">
+        <div class="quiz-q">Q5. What does the <code>-b</code> flag stand for in <code>git checkout -b</code>?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,'q5','wrong')">backup</button>
+          <button class="quiz-opt" onclick="answer(this,'q5','wrong')">base</button>
+          <button class="quiz-opt" onclick="answer(this,'q5','correct')">branch (create new branch)</button>
+          <button class="quiz-opt" onclick="answer(this,'q5','wrong')">build</button>
+        </div>
+        <div class="quiz-feedback" id="fb-q5"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ SECTION 5: REAL CHALLENGE ============ -->
+  <div class="section">
+    <div class="section-header" onclick="toggleSection('s5')">
+      <div class="section-num">05</div>
+      <div class="section-title">HANDS-ON CHALLENGE — USE YOUR STATLAB</div>
+    </div>
+    <div class="section-body collapsed" id="s5">
+      <p style="font-size:.88rem;line-height:1.65;margin-bottom:20px;color:#3a2e1e;">
+        Now use what you learned on the <strong>real StatLab project</strong> you built today. Open your terminal, navigate to your project folder, and follow these steps:
+      </p>
+
+      <div class="challenge">
+        <div class="challenge-title">Mission: Branch Like a Pro</div>
+        <ol>
+          <li>Initialize git if not done: <span>git init && git add . && git commit -m "initial commit"</span></li>
+          <li>Create and switch to a <span>dev</span> branch: <span>git checkout -b dev</span></li>
+          <li>From dev, create a feature branch: <span>git checkout -b feature/csv-upload</span></li>
+          <li>Open index.html, add a comment <span>/* CSV upload coming soon */</span> anywhere</li>
+          <li>Stage and commit: <span>git add . && git commit -m "feat: csv upload placeholder"</span></li>
+          <li>Switch back to dev: <span>git checkout dev</span></li>
+          <li>Merge your feature: <span>git merge feature/csv-upload</span></li>
+          <li>Delete the feature branch: <span>git branch -d feature/csv-upload</span></li>
+          <li>Run <span>git log --oneline</span> and verify all commits are there</li>
+          <li>Push everything to GitHub: <span>git push origin main && git push origin dev</span></li>
+        </ol>
+      </div>
+
+      <div class="tip-box" style="margin-top:16px;">
+        <strong>✅ SUCCESS CHECK:</strong> Run <code>git branch</code> — you should only see <code>main</code> and <code>dev</code>. The feature branch should be gone. Run <code>git log --oneline</code> to see a clean history.
+      </div>
+
+      <div class="badge-wrap" id="badge-wrap" style="display:none;">
+        <div class="badge">🌿 LEVEL 1 COMPLETE</div>
+        <p style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);margin-top:16px;letter-spacing:1px;">NEXT UP: LEVEL 2 — UNDOING THINGS</p>
+      </div>
+
+      <div class="flex-row" style="margin-top:20px;">
+        <button class="sim-enter" style="padding:10px 24px;font-size:.75rem;" onclick="completeMission()">✓ I COMPLETED THE MISSION</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// BRANCH DIAGRAM
+// ============================================================
+function drawDiagram() {
+  const canvas = document.getElementById('branch-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 2;
+  const H = 180;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = '#2c1810';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = 30;
+  const commits = [
+    { x: pad,         y: H/2,     label: 'C1', branch: 'main' },
+    { x: pad+90,      y: H/2,     label: 'C2', branch: 'main' },
+    { x: pad+180,     y: H/2,     label: 'C3', branch: 'main' },
+    { x: pad+180,     y: H/2-55, label: 'B1', branch: 'feature' },
+    { x: pad+270,     y: H/2-55, label: 'B2', branch: 'feature' },
+    { x: pad+360,     y: H/2,     label: 'C4', branch: 'main', merge: true },
+  ];
+
+  const colors = { main: '#c0392b', feature: '#27ae60' };
+
+  // Lines
+  ctx.lineWidth = 2.5;
+
+  // main line
+  ctx.strokeStyle = colors.main;
+  ctx.beginPath();
+  ctx.moveTo(commits[0].x, commits[0].y);
+  ctx.lineTo(commits[2].x, commits[2].y);
+  ctx.stroke();
+
+  // branch fork
+  ctx.strokeStyle = colors.feature;
+  ctx.beginPath();
+  ctx.moveTo(commits[2].x, commits[2].y);
+  ctx.lineTo(commits[3].x, commits[3].y);
+  ctx.lineTo(commits[4].x, commits[4].y);
+  ctx.stroke();
+
+  // merge back
+  ctx.strokeStyle = colors.feature;
+  ctx.beginPath();
+  ctx.moveTo(commits[4].x, commits[4].y);
+  ctx.lineTo(commits[5].x, commits[5].y);
+  ctx.stroke();
+
+  // main after merge
+  ctx.strokeStyle = colors.main;
+  ctx.beginPath();
+  ctx.moveTo(commits[2].x, commits[2].y);
+  ctx.lineTo(commits[5].x, commits[5].y);
+  ctx.stroke();
+
+  // Dots
+  commits.forEach(c => {
+    const col = c.branch === 'main' ? colors.main : colors.feature;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.merge ? 9 : 7, 0, Math.PI*2);
+    ctx.fillStyle = c.merge ? '#f5c842' : col;
+    ctx.fill();
+    ctx.strokeStyle = '#2c1810';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // label
+    ctx.fillStyle = '#888';
+    ctx.font = `500 10px Space Mono, monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(c.label, c.x, c.y + (c.branch === 'feature' ? -16 : 20));
+  });
+
+  // Branch labels
+  ctx.font = 'bold 11px Space Mono, monospace';
+  ctx.fillStyle = colors.main;
+  ctx.textAlign = 'left';
+  ctx.fillText('main', W - 60, H/2 + 20);
+
+  ctx.fillStyle = colors.feature;
+  ctx.fillText('feature/x', commits[4].x - 20, commits[4].y - 18);
+
+  ctx.fillStyle = '#f5c842';
+  ctx.textAlign = 'center';
+  ctx.fillText('merge commit', commits[5].x, commits[5].y + 22);
+}
+
+window.addEventListener('load', drawDiagram);
+window.addEventListener('resize', drawDiagram);
+
+// ============================================================
+// SECTION TOGGLE
+// ============================================================
+function toggleSection(id) {
+  const body = document.getElementById(id);
+  body.classList.toggle('collapsed');
+}
+
+// ============================================================
+// COPY CODE
+// ============================================================
+function copyCode(btn) {
+  const block = btn.parentElement;
+  const lines = [...block.querySelectorAll('[class^="cmd"],[class="prompt"],[class="comment"]')];
+  const text = [...block.children]
+    .map(el => el.textContent)
+    .filter(t => !t.includes('COPY'))
+    .join('\n')
+    .replace(/^\$ /gm, '');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'COPIED!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ============================================================
+// SIMULATOR
+// ============================================================
+let simState = {
+  currentBranch: 'main',
+  branches: { main: [{hash:'a1b2c3',msg:'initial commit'},{hash:'d4e5f6',msg:'add statlab'}], },
+  merged: [],
+};
+
+function simLog(text, cls='info') {
+  const out = document.getElementById('sim-output');
+  const p = document.createElement('p');
+  p.className = 'sim-line ' + cls;
+  p.innerHTML = text;
+  out.appendChild(p);
+  out.scrollTop = out.scrollHeight;
+}
+
+function updatePrompt() {
+  document.getElementById('sim-prompt').textContent = simState.currentBranch + ' $';
+}
+
+function fillCmd(cmd) {
+  document.getElementById('sim-input').value = cmd;
+  document.getElementById('sim-input').focus();
+}
+
+function resetSim() {
+  simState = {
+    currentBranch: 'main',
+    branches: { main: [{hash:'a1b2c3',msg:'initial commit'},{hash:'d4e5f6',msg:'add statlab'}] },
+    merged: [],
+  };
+  updatePrompt();
+  const out = document.getElementById('sim-output');
+  out.innerHTML = '';
+  simLog('Simulator reset. Repo has 2 commits on main.', 'info');
+  simLog('Try: git branch, git checkout -b dev, git merge dev', 'info');
+  simLog('─────────────────────────────────────────────', 'info');
+}
+
+function runCmd() {
+  const input = document.getElementById('sim-input');
+  const raw = input.value.trim();
+  input.value = '';
+  if (!raw) return;
+
+  simLog('<span style="color:#f5c842">' + simState.currentBranch + ' $</span> ' + raw, 'prompt-line');
+
+  const parts = raw.split(/\s+/);
+  if (parts[0] !== 'git') { simLog('command not found: ' + parts[0] + ' (only git commands supported)', 'error'); return; }
+
+  const sub = parts[1];
+  const args = parts.slice(2);
+
+  if (sub === 'branch') {
+    if (args.length === 0) {
+      // list
+      Object.keys(simState.branches).forEach(b => {
+        const isCur = b === simState.currentBranch;
+        simLog((isCur ? '* ' : '  ') + b, isCur ? 'branch-main' : 'output');
+      });
+    } else if (args[0] === '-d' || args[0] === '-D') {
+      const name = args[1];
+      if (!name) { simLog('error: branch name required', 'error'); return; }
+      if (name === simState.currentBranch) { simLog(`error: cannot delete branch '${name}' checked out at current`, 'error'); return; }
+      if (!simState.branches[name]) { simLog(`error: branch '${name}' not found`, 'error'); return; }
+      if (args[0] === '-d' && !simState.merged.includes(name)) {
+        simLog(`error: branch '${name}' is not fully merged. use -D to force delete.`, 'error'); return;
+      }
+      delete simState.branches[name];
+      simLog(`Deleted branch ${name}.`, 'success');
+    } else {
+      const name = args[0];
+      if (simState.branches[name]) { simLog(`fatal: branch '${name}' already exists`, 'error'); return; }
+      simState.branches[name] = [...simState.branches[simState.currentBranch]];
+      simLog(`Branch '${name}' created.`, 'success');
+    }
+  } else if (sub === 'checkout') {
+    if (args[0] === '-b') {
+      const name = args[1];
+      if (!name) { simLog('error: branch name required', 'error'); return; }
+      if (simState.branches[name]) { simLog(`fatal: branch '${name}' already exists`, 'error'); return; }
+      simState.branches[name] = [...simState.branches[simState.currentBranch]];
+      simState.currentBranch = name;
+      updatePrompt();
+      simLog(`Switched to a new branch '${name}'`, 'success');
+    } else {
+      const name = args[0];
+      if (!name) { simLog('error: branch name required', 'error'); return; }
+      if (!simState.branches[name]) { simLog(`error: pathspec '${name}' did not match any branch`, 'error'); return; }
+      simState.currentBranch = name;
+      updatePrompt();
+      simLog(`Switched to branch '${name}'`, 'success');
+    }
+  } else if (sub === 'merge') {
+    const name = args[0];
+    if (!name) { simLog('error: branch name required', 'error'); return; }
+    if (!simState.branches[name]) { simLog(`fatal: '${name}' does not point at a commit`, 'error'); return; }
+    if (name === simState.currentBranch) { simLog('Already up to date.', 'output'); return; }
+    const newCommits = simState.branches[name].filter(c =>
+      !simState.branches[simState.currentBranch].some(b => b.hash === c.hash)
+    );
+    if (newCommits.length === 0) { simLog('Already up to date.', 'output'); return; }
+    simState.branches[simState.currentBranch].push(...newCommits);
+    simState.merged.push(name);
+    simLog(`Merge made by the 'ort' strategy.`, 'success');
+    newCommits.forEach(c => simLog(`  ${c.hash}  ${c.msg}`, 'output'));
+  } else if (sub === 'log') {
+    const commits = simState.branches[simState.currentBranch];
+    [...commits].reverse().forEach(c => {
+      simLog(`<span style="color:#f5c842">commit ${c.hash}</span>`, 'output');
+      simLog(`&nbsp;&nbsp;&nbsp;&nbsp;${c.msg}`, 'output');
+    });
+  } else if (sub === 'add') {
+    simLog(`Changes staged.`, 'success');
+  } else if (sub === 'commit') {
+    const mIdx = args.indexOf('-m');
+    const msg = mIdx >= 0 ? args.slice(mIdx+1).join(' ').replace(/^"|"$/g,'').replace(/^'|'$/g,'') : 'update';
+    const hash = Math.random().toString(36).slice(2,8);
+    simState.branches[simState.currentBranch].push({ hash, msg });
+    simLog(`[${simState.currentBranch} ${hash}] ${msg}`, 'success');
+  } else if (sub === 'status') {
+    simLog(`On branch ${simState.currentBranch}`, 'output');
+    simLog(`nothing to commit, working tree clean`, 'output');
+  } else if (sub === 'init') {
+    simLog(`Initialized empty Git repository`, 'success');
+  } else if (sub === 'push') {
+    simLog(`Pushing to origin/${simState.currentBranch}...`, 'output');
+    simLog(`Branch '${simState.currentBranch}' pushed to remote.`, 'success');
+  } else {
+    simLog(`git: '${sub}' is supported in full Git. Try: branch, checkout, merge, log, commit, add, push`, 'error');
+  }
+}
+
+document.getElementById('sim-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runCmd();
+});
+
+// ============================================================
+// QUIZ
+// ============================================================
+let quizScore = 0;
+const feedbacks = {
+  q1: { correct: '✓ Correct! The -b flag creates AND checks out in one step. Used constantly in real work.', wrong: '✗ Not quite. git checkout -b does both — creates the branch and switches to it immediately.' },
+  q2: { correct: '✓ Correct! You always merge INTO the current branch. Switch to main first, then pull the feature in.', wrong: '✗ Remember: you merge INTO the branch you\'re on. Go to main first, then merge the feature branch.' },
+  q3: { correct: '✓ Correct! -d is the safe delete — it only works if the branch has been merged.', wrong: '✗ The correct syntax is git branch -d <name>. The lowercase -d is the safe option after merging.' },
+  q4: { correct: '✓ Correct! The asterisk (*) always marks your current branch.', wrong: '✗ Look for the asterisk (*) in the list — it always points to your active branch.' },
+  q5: { correct: '✓ Correct! -b stands for branch, telling Git to create a new one.', wrong: '✗ In this context, -b means "branch" — create a new one with this name.' },
+};
+
+function answer(btn, qId, result) {
+  const card = document.getElementById(qId);
+  const btns = card.querySelectorAll('.quiz-opt');
+  btns.forEach(b => { b.disabled = true; });
+
+  btn.classList.add(result);
+  const fb = document.getElementById('fb-' + qId);
+  fb.textContent = feedbacks[qId][result];
+  fb.className = 'quiz-feedback show ' + (result === 'correct' ? 'ok' : 'bad');
+
+  if (result === 'correct') {
+    quizScore++;
+    document.getElementById('score-display').textContent = quizScore;
+    const dots = document.querySelectorAll('.prog-dot');
+    const idx = ['q1','q2','q3','q4','q5'].indexOf(qId);
+    if (dots[idx]) { dots[idx].classList.remove('active'); dots[idx].classList.add('done'); }
+    if (quizScore < 5 && dots[idx+1]) dots[idx+1].classList.add('active');
+  }
+}
+
+// ============================================================
+// MISSION COMPLETE
+// ============================================================
+function completeMission() {
+  document.getElementById('badge-wrap').style.display = 'block';
+  document.getElementById('badge-wrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+</script>
+</body>
+</html>
